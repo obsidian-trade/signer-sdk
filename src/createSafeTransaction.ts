@@ -1,15 +1,15 @@
-import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, hashTypedData, http, zeroAddress, type Address, type Hex } from "viem";
+import { createPublicClient, encodeFunctionData, erc20Abi, hashTypedData, http, zeroAddress, type Address, type Hex } from "viem";
 import { OperationType, TransactionType, type SafeContractConfig, type SafeTransaction, type SafeTransactionArgs, type SignatureParams, type TransactionRequest } from "./types";
 
-import { createSafeMultisendTransaction } from "./encode";
-import { deriveSafe } from "./derive";
+import { createSafeMultisendTransaction } from "./utils/encode";
+import { deriveSafe } from "./utils/derive";
 import { splitAndPackSig } from "./utils";
 import type IAbstractSigner from "./types";
 import { polygon } from "viem/chains";
 import { safeAbi } from "./abi/safe";
-import { createGelatoEvmRelayerClient } from "@gelatocloud/gasless";
 import { privateKeyToAccount } from "viem/accounts";
-import { POL } from "./constants";
+import type { IRelayerClient } from "./relayerClient";
+import type { Chain } from "viem";
 
 async function createSafeSignature(signer: IAbstractSigner, structHash: string): Promise<string> {
     return signer.signMessage(structHash);
@@ -151,31 +151,23 @@ export async function buildSafeTransactionRequest(
     return req;
 }
 
-
-
 const USDC_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 
-const publicClient = createPublicClient({
-    chain: polygon,
-    transport: http(),
-});
-
-
-const GELATO_API_KEY = process.env.GELATO_API_KEY as string;
-if (!GELATO_API_KEY) {
-    throw new Error("GELATO_API_KEY is not set");
-
-}
 export async function executeSafeWithUsdcApproval(
+    client: IRelayerClient,
     signer: IAbstractSigner,
     eoaAddress: string,
     safeContractConfig: SafeContractConfig,
     railgunTx: { to: string; data: string; value: bigint },
     usdcAmount: bigint,
     chainId: number = 137,
+    chain: Chain = polygon,
 ): Promise<{ txHash: string }> {
+    const publicClient = createPublicClient({
+        chain,
+        transport: client.getTransport(),
+    });
 
-    // 1. Fetch nonce
     const nonce = await publicClient.readContract({
         address: deriveSafe(eoaAddress, safeContractConfig.SafeFactory) as Address,
         abi: safeAbi,
@@ -184,7 +176,6 @@ export async function executeSafeWithUsdcApproval(
 
     console.log(`Nonce: ${nonce}`);
 
-    // 2. Build transactions
     const approveTx: SafeTransaction = {
         to: USDC_POLYGON,
         value: "0",
@@ -196,8 +187,6 @@ export async function executeSafeWithUsdcApproval(
         operation: OperationType.Call,
     };
 
-
-    // 3. Build Safe tx request (batches approve + unshield via multisend)
     const req = await buildSafeTransactionRequest(
         signer,
         {
@@ -209,7 +198,6 @@ export async function executeSafeWithUsdcApproval(
         safeContractConfig,
     );
 
-    // 4. Encode execTransaction calldata
     const execCalldata = encodeFunctionData({
         abi: safeAbi,
         functionName: "execTransaction",
@@ -225,9 +213,7 @@ export async function executeSafeWithUsdcApproval(
         ],
     });
 
-    const gelato = createGelatoEvmRelayerClient({ apiKey: GELATO_API_KEY });
-
-    let txHash = await gelato.sendTransactionSync({
+    const txHash = await client.sendTransactionSync({
         chainId,
         to: req.proxyWallet as Address,
         data: execCalldata,
@@ -235,20 +221,3 @@ export async function executeSafeWithUsdcApproval(
     console.log("[Safe] execTransaction submitted:", txHash);
     return { txHash: txHash.transactionHash };
 }
-
-const privateKey = process.env.PRIVATE_KEY as string;
-if (!privateKey.startsWith("0x")) {
-    throw new Error("PRIVATE_KEY must start with 0x");
-}
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const client = createWalletClient({ account, chain: polygon, transport: http() });
-
-const signer: IAbstractSigner = {
-    signMessage: (msg) => account.sign({ hash: msg as Hex }),
-    signTypedData: (domain, types, values, primaryType) =>
-        client.signTypedData({ account, domain, types, message: values, primaryType }),
-    getAddress: () => Promise.resolve(account.address),
-};
-
-console.log(`Account address: ${account.address}`);
-await executeSafeWithUsdcApproval(signer, account.address, POL.SafeContracts, { to: account.address, data: "0x", value: 0n }, 1000000000000000000n);

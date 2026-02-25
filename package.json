@@ -1,6 +1,6 @@
 {
   "name": "signer",
-  "module": "index.ts",
+  "main": "./src/index.ts", "exports": { ".": "./src/index.ts" },
   "type": "module",
   "private": true,
   "devDependencies": {

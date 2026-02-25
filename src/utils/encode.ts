@@ -7,8 +7,8 @@ import {
     size 
 } from "viem";
 
-import { multisendAbi } from "./abi/multiSend";
-import { OperationType, type SafeTransaction } from "./types";
+import { multisendAbi } from "../abi/multiSend";
+import { OperationType, type SafeTransaction } from "../types";
 
 const multisend = prepareEncodeFunctionData({
     abi: multisendAbi,
