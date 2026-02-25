@@ -101,9 +101,9 @@ export class RelayerClient implements IRelayerClient {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(this.apiKey && { Authorization: `Bearer ${this.apiKey}` }),
                 },
                 body: JSON.stringify(body),
+                credentials: "include",
             });
 
             console.log("Response from backend:", res.status);
