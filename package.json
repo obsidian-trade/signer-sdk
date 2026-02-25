@@ -1,0 +1,17 @@
+{
+  "name": "signer",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@gelatocloud/gasless": "^0.0.12",
+    "@gelatonetwork/relay-sdk": "^5.7.0",
+    "viem": "^2.46.3"
+  }
+}
