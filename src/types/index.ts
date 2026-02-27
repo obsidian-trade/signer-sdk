@@ -1,3 +1,5 @@
+import type { Address } from "viem";
+
 export default interface IAbstractSigner {
     getAddress(): Promise<string>;
     signMessage(message: string): Promise<string>;
@@ -13,7 +15,7 @@ export enum OperationType {
 
 
 export interface SafeContractConfig {
-    SafeFactory: string;
+    SafeFactory: Address;
     SafeMultisend: string;
 }
 
@@ -23,7 +25,7 @@ export interface ContractConfig {
 
 
 export interface SafeTransactionArgs {
-    from: string;
+    from: Address;
     nonce: string;
     chainId: number;
     transactions: SafeTransaction[];

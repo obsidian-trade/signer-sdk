@@ -125,12 +125,12 @@ export class RelayerClient implements IRelayerClient {
         throw new Error("Unsupported relayer");
     }
 
-    deriveSafeFromEOA(from: string, safeFactory: string): string {
+    deriveSafeFromEOA(from: Address, safeFactory: Address): Address {
         return deriveSafe(from, safeFactory);
     }
 
 
-    aggregateTransaction(txns: SafeTransaction[], safeMultisend: string): SafeTransaction {
+    aggregateTransaction(txns: SafeTransaction[], safeMultisend: Address): SafeTransaction {
         return aggregateTransaction(txns, safeMultisend);
     }
 
@@ -143,9 +143,9 @@ export class RelayerClient implements IRelayerClient {
     }
 
     async approveUsdc(
-        eoaAddress: string,
+        eoaAddress: Address,
         safeContractConfig: SafeContractConfig,
-        railgunTx: { to: string; data: string; value: bigint },
+        railgunTx: { to: Address; data: string; value: bigint },
         usdcAmount: bigint,
         chainId?: number
     ): Promise<{ txHash: string }> {
@@ -159,7 +159,7 @@ export class RelayerClient implements IRelayerClient {
         return buildSafeCreateTransaction(this.requireSigner(), safeContractConfig, args);
     }
 
-    async isSafeDeployed(safeAddress: string): Promise<boolean> {
+    async isSafeDeployed(safeAddress: Address): Promise<boolean> {
         const bytecode = await this.publicClient.getBytecode({ address: safeAddress as Address });
         return bytecode !== undefined && bytecode !== "0x";
     }

@@ -15,9 +15,9 @@ const USDC_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 export async function executeSafeWithUsdcApproval(
     client: RelayerClient,
     signer: IAbstractSigner,
-    eoaAddress: string,
+    eoaAddress: Address,
     safeContractConfig: SafeContractConfig,
-    railgunTx: { to: string; data: string; value: bigint },
+    railgunTx: { to: Address; data: string; value: bigint },
     usdcAmount: bigint,
     chainId: number = 137,
     chain: Chain = polygon,
@@ -28,7 +28,7 @@ export async function executeSafeWithUsdcApproval(
     });
 
     const nonce = await publicClient.readContract({
-        address: deriveSafe(eoaAddress, safeContractConfig.SafeFactory) as Address,
+        address: deriveSafe(eoaAddress, safeContractConfig.SafeFactory),
         abi: safeAbi,
         functionName: "nonce",
     }) as bigint;
@@ -41,7 +41,7 @@ export async function executeSafeWithUsdcApproval(
         data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
-            args: [railgunTx.to as Address, usdcAmount],
+            args: [railgunTx.to, usdcAmount],
         }),
         operation: OperationType.Call,
     };

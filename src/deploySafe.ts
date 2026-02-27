@@ -1,11 +1,11 @@
-import { encodeFunctionData, hexToSignature, type Hex } from "viem";
+import { encodeFunctionData, hexToSignature, type Address, type Hex } from "viem";
 import type IAbstractSigner from "./types";
 import type { SafeContractConfig } from "./types";
 import { SAFE_FACTORY_NAME } from "./constants";
 import { safeFactoryAbi } from "./abi/safeFactory";
 
 export interface SafeCreateTransactionArgs {
-    from: string;
+    from: Address;
     chainId: number;
     paymentToken: string;
     payment: string;
@@ -14,7 +14,7 @@ export interface SafeCreateTransactionArgs {
 
 async function createSafeCreateSignature(
     signer: IAbstractSigner,
-    safeFactory: string,
+    safeFactory: Address,
     chainId: number,
     paymentToken: string,
     payment: string,
@@ -23,7 +23,7 @@ async function createSafeCreateSignature(
     const domain = {
         name: SAFE_FACTORY_NAME,
         chainId: BigInt(chainId),
-        verifyingContract: safeFactory as Hex,
+        verifyingContract: safeFactory,
     };
     const types = {
         CreateProxy: [
