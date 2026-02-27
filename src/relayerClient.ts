@@ -14,7 +14,8 @@ export type RelayerType = "gelato" | "backend";
 export interface RelayerClientConfig {
     rpcUrl: string;
     relayer: RelayerType;
-    signer: IAbstractSigner;
+    /** Optional. Omit for relay-only usage (sendTransactionSync, deriveSafeFromEOA, aggregateTransaction, isSafeDeployed). */
+    signer?: IAbstractSigner;
     chain?: Chain;
     apiKey?: string;
     backendUrl?: string;
@@ -41,7 +42,7 @@ export class RelayerClient implements IRelayerClient {
     private backendUrl: string | undefined;
     private relayer: RelayerType;
     private chain: Chain;
-    private signer: IAbstractSigner;
+    private signer: IAbstractSigner | undefined;
     private publicClient: ReturnType<typeof createPublicClient>;
     private _gelato: ReturnType<typeof createGelatoEvmRelayerClient> | null = null;
 
@@ -52,7 +53,6 @@ export class RelayerClient implements IRelayerClient {
         this.relayer = config.relayer;
         this.chain = config.chain ?? polygon;
         this.signer = config.signer;
-
         this.publicClient = createPublicClient({
             chain: this.chain,
             transport: this.getTransport(),
@@ -68,6 +68,13 @@ export class RelayerClient implements IRelayerClient {
 
     getTransport() {
         return http(this.rpcUrl || this.chain.rpcUrls.default.http[0]);
+    }
+
+    private requireSigner(): IAbstractSigner {
+        if (!this.signer) {
+            throw new Error("RelayerClient: signer is required for this operation. Pass signer in config or use a relayer instance created with signer.");
+        }
+        return this.signer;
     }
 
     async sendTransactionSync(params: SendTransactionParams): Promise<TransactionReceipt> {
@@ -132,7 +139,7 @@ export class RelayerClient implements IRelayerClient {
         safeContractConfig: SafeContractConfig,
         metadata?: string
     ): Promise<TransactionRequest> {
-        return buildSafeTransactionRequest(this.signer, args, safeContractConfig, metadata);
+        return buildSafeTransactionRequest(this.requireSigner(), args, safeContractConfig, metadata);
     }
 
     async approveUsdc(
@@ -142,14 +149,14 @@ export class RelayerClient implements IRelayerClient {
         usdcAmount: bigint,
         chainId?: number
     ): Promise<{ txHash: string }> {
-        return executeSafeWithUsdcApproval(this, this.signer, eoaAddress, safeContractConfig, railgunTx, usdcAmount, chainId ?? this.chain.id, this.chain);
+        return executeSafeWithUsdcApproval(this, this.requireSigner(), eoaAddress, safeContractConfig, railgunTx, usdcAmount, chainId ?? this.chain.id, this.chain);
     }
 
     async buildSafeCreateTransaction(
         safeContractConfig: SafeContractConfig,
         args: SafeCreateTransactionArgs
     ) {
-        return buildSafeCreateTransaction(this.signer, safeContractConfig, args);
+        return buildSafeCreateTransaction(this.requireSigner(), safeContractConfig, args);
     }
 
     async isSafeDeployed(safeAddress: string): Promise<boolean> {
@@ -161,6 +168,7 @@ export class RelayerClient implements IRelayerClient {
         safeContractConfig: SafeContractConfig,
         args: SafeCreateTransactionArgs
     ): Promise<TransactionReceipt> {
+        this.requireSigner();
         const safeAddress = deriveSafe(args.from, safeContractConfig.SafeFactory);
         if (await this.isSafeDeployed(safeAddress)) {
             throw new Error("Safe is already deployed");
