@@ -21,6 +21,8 @@ import type {
   TransactionRequest,
 } from "./types";
 import { safeAbi } from "./abi/safe";
+import { transferUsdcFromSafe } from "./transferUsdcFromSafe";
+import { signAndExecuteSafeTransaction } from "./signAndExecute";
 
 export type RelayerType = "gelato" | "backend";
 
@@ -234,5 +236,37 @@ export class RelayerClient implements IRelayerClient {
     }
     const tx = await this.buildSafeCreateTransaction(safeContractConfig, args);
     return this.sendTransactionSync(tx);
+  }
+
+  async transferUsdcFromSafe(
+    eoaAddress: Address,
+    safeContractConfig: SafeContractConfig,
+    toAddress: Address,
+    usdcAmount: bigint,
+  ): Promise<{ txHash: string }> {
+    return transferUsdcFromSafe(
+      this,
+      this.requireSigner(),
+      eoaAddress,
+      safeContractConfig,
+      toAddress,
+      usdcAmount,
+      this.chain,
+    );
+  }
+
+  async signAndExecuteSafeTransaction(
+    eoaAddress: Address,
+    safeContractConfig: SafeContractConfig,
+    transactions: SafeTransaction[],
+  ): Promise<{ txHash: string }> {
+    return signAndExecuteSafeTransaction(
+      this,
+      this.requireSigner(),
+      eoaAddress,
+      safeContractConfig,
+      transactions,
+      this.chain,
+    );
   }
 }

@@ -2,13 +2,13 @@ import { describe, test, expect } from "bun:test";
 import { createWalletClient, type Hex } from "viem";
 import { http } from "viem";
 import { polygon } from "viem/chains";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, type Address } from "viem/accounts";
 import { RelayerClient, POL } from "./index";
 import type IAbstractSigner from "./types";
 
 const RELAY_TX = {
-    to: "0x" as const,
-    data: "0x" as const,
+    to: "0x19b620929f97b7b990801496c3b361ca5def8c71" as const,
+    data: "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002545524332303a207472616e736665722066726f6d20746865207a65726f2061646472657373000000000000000000000000000000000000000000000000" as const,
     gasLimit: "1332838",
 };
 
@@ -62,13 +62,9 @@ describe("exec flow", () => {
             expect(receipt.transactionHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
         }
 
-        const receipt = await relayer.sendTransactionSync({
-            chainId: 137,
-            to: RELAY_TX.to,
-            data: RELAY_TX.data,
-            gas: BigInt(RELAY_TX.gasLimit),
-        });
+        const toAddress = "0xdE5DA69601810b72bE006957CC0c891BAEAaF7a6" as Address;
+        const receipt = await relayer.transferUsdcFromSafe(account.address, POL.SafeContracts, toAddress, 1000n);
         expect(receipt).toBeDefined();
-        expect(receipt.transactionHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+        expect(receipt.txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
     });
 });

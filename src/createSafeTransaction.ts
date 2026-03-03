@@ -10,6 +10,7 @@ import { safeAbi } from "./abi/safe";
 import { privateKeyToAccount } from "viem/accounts";
 import type { IRelayerClient } from "./relayerClient";
 import type { Chain } from "viem";
+import { USDC_POLYGON } from "./constants";
 
 async function createSafeSignature(signer: IAbstractSigner, structHash: string): Promise<string> {
     return signer.signMessage(structHash);
@@ -151,7 +152,7 @@ export async function buildSafeTransactionRequest(
     return req;
 }
 
-const USDC_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+
 
 export async function executeSafeWithUsdcApproval(
     client: IRelayerClient,

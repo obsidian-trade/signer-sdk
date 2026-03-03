@@ -9,3 +9,5 @@ export const POL: ContractConfig = {
 
 export const SAFE_FACTORY_NAME = "Polymarket Contract Proxy Factory";
 
+
+export const USDC_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
