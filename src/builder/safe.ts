@@ -1,30 +1,21 @@
-import { createPublicClient, encodeFunctionData, erc20Abi, hashTypedData, http, zeroAddress, type Address, type Hex } from "viem";
-import { OperationType, TransactionType, type SafeContractConfig, type SafeTransaction, type SafeTransactionArgs, type SignatureParams, type TransactionRequest } from "./types";
+import type IAbstractSigner from "../signer";
+import { hashTypedData, type Hex, zeroAddress } from "viem";
+import {
+    OperationType,
+    type SafeTransaction,
+    type SafeTransactionArgs,
+    type SignatureParams,
+    type TransactionRequest,
+    TransactionType
+} from "../types";
+import { deriveSafe } from "./derive";
+import { createSafeMultisendTransaction } from "../encode/safe";
+import type { SafeContractConfig } from "../config";
+import { splitAndPackSig } from "../utils";
 
-import { createSafeMultisendTransaction } from "./utils/encode";
-import { deriveSafe } from "./utils/derive";
-import { splitAndPackSig } from "./utils";
-import type IAbstractSigner from "./types";
-import { polygon } from "viem/chains";
-import { safeAbi } from "./abi/safe";
-import { privateKeyToAccount } from "viem/accounts";
-import type { IRelayerClient } from "./relayerClient";
-import type { Chain } from "viem";
-import { USDC_POLYGON } from "./constants";
 
 async function createSafeSignature(signer: IAbstractSigner, structHash: string): Promise<string> {
     return signer.signMessage(structHash);
-}
-
-
-export function aggregateTransaction(txns: SafeTransaction[], safeMultisend: string): SafeTransaction {
-    let transaction: SafeTransaction;
-    if (txns.length == 1) {
-        transaction = txns[0] as SafeTransaction;
-    } else {
-        transaction = createSafeMultisendTransaction(txns, safeMultisend);
-    }
-    return transaction;
 }
 
 function createStructHash(
@@ -83,6 +74,15 @@ function createStructHash(
     return structHash;
 }
 
+export function aggregateTransaction(txns: SafeTransaction[], safeMultisend: string): SafeTransaction {
+    let transaction: SafeTransaction;
+    if (txns.length == 1) {
+        transaction = txns[0] as SafeTransaction;
+    } else {
+        transaction = createSafeMultisendTransaction(txns, safeMultisend);
+    }
+    return transaction;
+}
 
 export async function buildSafeTransactionRequest(
     signer: IAbstractSigner,
@@ -150,75 +150,4 @@ export async function buildSafeTransactionRequest(
     console.log(`Created Safe Transaction Request: `);
     console.log(req);
     return req;
-}
-
-
-
-export async function executeSafeWithUsdcApproval(
-    client: IRelayerClient,
-    signer: IAbstractSigner,
-    eoaAddress: Address,
-    safeContractConfig: SafeContractConfig,
-    railgunTx: { to: Address; data: string; value: bigint },
-    usdcAmount: bigint,
-    chainId: number = 137,
-    chain: Chain = polygon,
-): Promise<{ txHash: string }> {
-    const publicClient = createPublicClient({
-        chain,
-        transport: client.getTransport(),
-    });
-
-    const nonce = await publicClient.readContract({
-        address: deriveSafe(eoaAddress, safeContractConfig.SafeFactory),
-        abi: safeAbi,
-        functionName: "nonce",
-    }) as bigint;
-
-    console.log(`Nonce: ${nonce}`);
-
-    const approveTx: SafeTransaction = {
-        to: USDC_POLYGON,
-        value: "0",
-        data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [railgunTx.to, usdcAmount],
-        }),
-        operation: OperationType.Call,
-    };
-
-    const req = await buildSafeTransactionRequest(
-        signer,
-        {
-            from: eoaAddress,
-            chainId,
-            transactions: [approveTx],
-            nonce: nonce.toString(),
-        },
-        safeContractConfig,
-    );
-
-    const execCalldata = encodeFunctionData({
-        abi: safeAbi,
-        functionName: "execTransaction",
-        args: [
-            req.to as Address,
-            0n,
-            req.data as Hex,
-            Number(req.signatureParams.operation),
-            0n, 0n, 0n,
-            zeroAddress,
-            zeroAddress,
-            req.signature as Hex,
-        ],
-    });
-
-    const txHash = await client.sendTransactionSync({
-        chainId,
-        to: req.proxyWallet as Address,
-        data: execCalldata,
-    });
-    console.log("[Safe] execTransaction submitted:", txHash);
-    return { txHash: txHash.transactionHash };
 }
